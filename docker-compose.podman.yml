@@ -18,3 +18,6 @@ services:
       - CUSTOM_MODEL=claude-opus-4-8
       - AI_CODE_GEN_MODEL=claude-opus-4-8
       - PROXY_URL=
+      - HTTP_PROXY=http://172.19.160.1:7897
+      - HTTPS_PROXY=http://172.19.160.1:7897
+      - NO_PROXY=localhost,127.0.0.1,::1,postgres,redis,api.mozen.app,api.binance.me
