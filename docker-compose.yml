@@ -8,7 +8,7 @@
 #   3. docker-compose up -d --build
 #   4. Open http://localhost:8888
 #
-# Backend is built from local source. Frontend is pulled from GHCR — its source
+# Backend is built from local source. Frontend is pulled from GHCR -- its source
 # lives in the private QuantDinger-Vue repo, which publishes
 # `ghcr.io/<owner>/quantdinger-frontend` on every `v*` tag. Override the tag
 # or image path via FRONTEND_IMAGE / IMAGE_TAG in a project-root `.env`.
@@ -93,6 +93,12 @@ services:
     restart: unless-stopped
     env_file:
       - ./backend_api_python/.env
+    environment:
+      - LLM_PROVIDER=custom
+      - CUSTOM_API_URL=https://api.mozen.app/v1
+      - CUSTOM_API_KEY=sk-mozen-d9642f4c4ed44921bbe924c4b3574b0c
+      - CUSTOM_MODEL=claude-opus-4-8
+      - AI_CODE_GEN_MODEL=claude-opus-4-8
     dns:
       - 8.8.8.8
       - 8.8.4.4
@@ -133,6 +139,12 @@ services:
       - GUNICORN_THREADS=${GUNICORN_THREADS:-8}
       # IBKR/MT5 need local TWS or MT5 terminal; set false on SaaS cloud (see env.example).
       - ALLOW_LOCAL_DESKTOP_BROKERS=${ALLOW_LOCAL_DESKTOP_BROKERS:-true}
+      # AI/LLM provider - claude-opus-4-8 via mozen.app
+      - LLM_PROVIDER=custom
+      - CUSTOM_API_URL=https://api.mozen.app/v1
+      - CUSTOM_API_KEY=sk-mozen-d9642f4c4ed44921bbe924c4b3574b0c
+      - CUSTOM_MODEL=claude-opus-4-8
+      - AI_CODE_GEN_MODEL=claude-opus-4-8
     networks:
       - quantdinger-network
     healthcheck:
@@ -153,9 +165,9 @@ services:
   # validates build context paths eagerly when `build:` is present).
   frontend:
     # Tag resolution (highest precedence wins):
-    #   FRONTEND_TAG   — per-side override, decouples FE from BE
-    #   IMAGE_TAG      — unified knob, sets both FE and BE (BE only relevant in ghcr.yml)
-    #   latest         — fallback; pin semver in project-root .env (e.g. IMAGE_TAG=3.0.10)
+    #   FRONTEND_TAG   -- per-side override, decouples FE from BE
+    #   IMAGE_TAG      -- unified knob, sets both FE and BE (BE only relevant in ghcr.yml)
+    #   latest         -- fallback; pin semver in project-root .env (e.g. IMAGE_TAG=3.0.10)
     image: ${FRONTEND_IMAGE:-ghcr.io/brokermr810/quantdinger-frontend}:${FRONTEND_TAG:-${IMAGE_TAG:-latest}}
     pull_policy: always
     container_name: quantdinger-frontend

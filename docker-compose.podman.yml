@@ -12,3 +12,8 @@ services:
     environment:
       - NO_PROXY=localhost,127.0.0.1,::1,postgres,redis
       - no_proxy=localhost,127.0.0.1,::1,postgres,redis
+      - LLM_PROVIDER=custom
+      - CUSTOM_API_URL=https://api.mozen.app/v1
+      - CUSTOM_API_KEY=sk-mozen-d9642f4c4ed44921bbe924c4b3574b0c
+      - CUSTOM_MODEL=claude-opus-4-8
+      - AI_CODE_GEN_MODEL=claude-opus-4-8
