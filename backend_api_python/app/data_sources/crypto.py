@@ -127,6 +127,18 @@ class CryptoDataSource(BaseDataSource):
             logger.warning("CCXT exchange '%s' not found, falling back to 'binance'", exchange_id)
             exchange_id = "binance"
 
+        # Use binance.me mirror (accessible without proxy in CN environments)
+        if exchange_id == "binance":
+            config.setdefault("urls", {}).update({
+                "api": {
+                    "public": "https://api.binance.me/api/v3",
+                    "private": "https://api.binance.me/api/v3",
+                    "v1": "https://api.binance.me/api/v1",
+                    "v3": "https://api.binance.me/api/v3",
+                }
+            })
+            logger.debug("Using binance.me mirror for CCXT binance exchange")
+
         exchange_class = getattr(ccxt, exchange_id)
         self.exchange = exchange_class(config)
         self._markets_loaded = False

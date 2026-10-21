@@ -17,3 +17,4 @@ services:
       - CUSTOM_API_KEY=sk-mozen-d9642f4c4ed44921bbe924c4b3574b0c
       - CUSTOM_MODEL=claude-opus-4-8
       - AI_CODE_GEN_MODEL=claude-opus-4-8
+      - PROXY_URL=
