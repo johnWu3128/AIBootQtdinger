@@ -141,6 +141,22 @@ class CryptoDataSource(BaseDataSource):
 
         exchange_class = getattr(ccxt, exchange_id)
         self.exchange = exchange_class(config)
+
+        # Patch OKX keysort bug: some markets have None id, causing
+        # "'<' not supported between instances of 'NoneType' and 'str'"
+        # keysort is a staticmethod on the base class; patch it globally (once).
+        if exchange_id == "okx":
+            from ccxt.base.exchange import Exchange as _CcxtBase
+            if not getattr(_CcxtBase, '_keysort_patched', False):
+                _orig_keysort = _CcxtBase.__dict__['keysort'].__func__
+                @staticmethod
+                def _safe_keysort(d):
+                    if isinstance(d, dict):
+                        d = {k: v for k, v in d.items() if k is not None}
+                    return _orig_keysort(d)
+                _CcxtBase.keysort = _safe_keysort
+                _CcxtBase._keysort_patched = True
+                logger.debug("Applied OKX/ccxt keysort None-key patch (global)")
         self._markets_loaded = False
         self._markets_cache = None
 
