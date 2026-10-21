@@ -603,32 +603,69 @@ def get_single_price(market: str, symbol: str) -> dict:
         }
 
 
+def _legacy_watchlist_from_query(raw: str, limit: int = 50) -> list:
+    """Parse the legacy frontend watchlist query parameter.
+
+    The current contract reads the authenticated user's DB watchlist. Some
+    deployed frontend bundles still send their in-memory/default watchlist as a
+    JSON query parameter, so we accept it only as an empty-DB fallback.
+    """
+    if not raw:
+        return []
+    try:
+        parsed = json.loads(raw)
+    except Exception:
+        logger.debug("watchlist/prices: failed to parse legacy watchlist param")
+        return []
+
+    if not isinstance(parsed, list):
+        return []
+
+    out = []
+    seen = set()
+    for item in parsed[: max(int(limit or 50), 1)]:
+        if not isinstance(item, dict):
+            continue
+        market = (item.get("market") or item.get("marketType") or "").strip()
+        symbol = _normalize_symbol(item.get("symbol"))
+        if not market or not symbol:
+            continue
+        if market == "Crypto":
+            symbol = normalize_crypto_symbol(symbol)
+        if market not in VALID_MARKETS:
+            continue
+        if _validate_watchlist_pair(market, symbol):
+            continue
+        key = (market, symbol)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append({"market": market, "symbol": symbol})
+    return out
+
+
 @market_bp.route('/watchlist/prices', methods=['GET'])
 @login_required
 def get_watchlist_prices():
     """
     Get realtime prices for the current user's watchlist.
 
-    Historical contract accepted a `watchlist=[{market,symbol},...]` query
-    parameter, which (combined with no auth) let any caller fan out arbitrary
-    market/symbol combinations to upstream data providers. We now ignore that
-    parameter and read the authenticated user's watchlist straight from the
-    DB. The query param is still parsed for back-compat logging only.
+    Historical frontend bundles still pass a `watchlist=[{market,symbol},...]`
+    query parameter. The DB remains authoritative, but if an older/self-hosted
+    account has no persisted rows yet, we use the authenticated legacy list as a
+    compatibility fallback so the AI analysis screen does not show all-zero
+    placeholder prices.
     """
     try:
         user_id = g.user_id
 
-        # Back-compat: log if a legacy client still sends the query param so we
-        # can spot stale frontends in deployment. The value is otherwise ignored.
         legacy_param = request.args.get('watchlist')
+        legacy_watchlist = []
         if legacy_param:
-            try:
-                legacy_count = len(json.loads(legacy_param) or [])
-            except Exception:
-                legacy_count = -1
+            legacy_watchlist = _legacy_watchlist_from_query(legacy_param)
             logger.debug(
-                "watchlist/prices: ignoring legacy client-supplied list (len=%s, user=%s)",
-                legacy_count, user_id,
+                "watchlist/prices: received legacy client list (valid=%s, user=%s)",
+                len(legacy_watchlist), user_id,
             )
 
         with get_db_connection() as db:
@@ -644,6 +681,14 @@ def get_watchlist_prices():
             {'market': (r.get('market') or '').strip(), 'symbol': (r.get('symbol') or '').strip()}
             for r in rows
         ]
+
+        if not watchlist and legacy_watchlist:
+            logger.info(
+                "watchlist/prices: using legacy query fallback for empty DB watchlist "
+                "(user=%s, count=%s)",
+                user_id, len(legacy_watchlist),
+            )
+            watchlist = legacy_watchlist
 
         if not watchlist:
             return jsonify({'code': 1, 'msg': 'success', 'data': []})

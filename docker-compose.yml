@@ -91,6 +91,12 @@ services:
         BUILD_REGION: ${BUILD_REGION:-cn}
     container_name: quantdinger-backend
     restart: unless-stopped
+    env_file:
+      - ./backend_api_python/.env
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 114.114.114.114
     depends_on:
       postgres:
         condition: service_healthy
